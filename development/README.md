@@ -73,12 +73,14 @@ pip install lcm -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 Перейти на [сайт](https://developer.nvidia.com/isaac-gym)
 
-<img src="development/images/gym1.png" height="300" />
+<div align="center">
+<img src="images/gym1.png" height="400" />
 </div>
 
 Скачать архив:
 
-<img src="development/images/gym2.png" height="300" />
+<div align="center">
+<img src="images/gym2.png" height="400" />
 </div>
 
 Распаковать архив, папку `isaacgym` переместить в место хранения
@@ -96,7 +98,8 @@ cd isaccgym/python/examples && python joint_monkey.py.
 
 >! Важно запускать файл `joint_monkey.py`, находясь в папке *examples*
 
-<img src="development/images/gym3.png" height="300" />
+<div align="center">
+<img src="images/gym3.png" height="400" />
 </div>
 
 Добавить шорткаты в `.bashrc` для обновления переменных среды:
@@ -106,45 +109,81 @@ alias ss="source ~/.bashrc"
 alias a1="conda activate Tinker"
 ```
 
-## Software Usage
+## Использование ПО
 
-### Train the Model:
-After setting up the environment and activating the virtual space, run the script for training:
+### Обучение модели:
+
+После настройки среды и запуска виртуального пространства, запустите скрипт следующей программой:
+
 ```bash
 python train.py
 ```
+
 The trained model will be updated here:  
 <div align="center">
 <img src="https://github.com/Yuexuan9/Tinker/raw/main/docs/images/development/3.png" height="300" />
 </div>
 
-To test the model, first modify the model file used in `simple_play.py`:
+Перед запуском теста отредактируйте путь к модели из `simple_play.py`:
 ```python
 model_dict = torch.load(os.path.join(ROOT_DIR, '/home/pi/Downloads/back_good/LocomotionWithNP3O-masteroldx/logs/rough_go2_constraint/Oct09_10-35-52_test_barlowtwins/model_3000.pt'))
 ```
-Then run the script:
+И затем запустите скрипт:
 ```bash
 python simple_play.py
 ```
 
-### Sim2Sim Testing
-After training with Isaac, the model must be transferred. Sim2Sim involves building a framework on the controller side to run the neural network and feed the necessary feedback data. Using the Human-Gym as a reference, Mujoco simulator enables Sim2Sim transfer. For real-world transfer, additional software in C++ may be required. Typical transfer frameworks can be:
+Далее идут возможные ошибки и их решения
+
+#### Ошибка №1
+
+
+```bash
+ImportError: libpython3.8.so.1.0: cannot open shared object file: No such file or directory
+```
+
+
+Решение:
+
+```bash
+export LD_LIBRARY_PATH=/<path to conda>/anaconda3/envs/<env_name>/lib
+```
+
+#### Ошибка №2
+
+```bash
+ImportError: .../anaconda3/envs/Tinker/bin/../lib/libstdc++.so.6: version 'GLIBCXX_3.4.32' not found (required by .../.cache/torch_extensions/py38_cu121/gymtorch/gymtorch.so)
+```
+
+
+Решение:
+
+```bash
+conda install -c conda-forge libstdcxx-ng
+```
+
+
+### Тест Sim2Sim
+После обучения в IsaacGym’e, необходим трансфер модели  . Sim2Sim включает в себя формирование фреймворка на стороне контроллера, чтобы мы могли запустить нейронную сеть и передавать необходимые данные для обратной связи. Используя Human-Gym в качестве референса, Mujoco позволит осуществить переход Sim2Sim. При реальном переносе, может понадобиться дополнительное ПО(?) на C++ (я не до конца понял о чем они и о каком ПО). Типичными фрейворками для трансфера могут быть:
+
 <div align="center">
-<img src="development/images/gym1.png" height="300" />
+<img src="https://github.com/Yuexuan9/Tinker/raw/main/docs/images/development/4.png" height="400" />
 </div>
 
-- **a. Using Mujoco Python/C++ simulation**: Embedding the network I/O in the Mujoco interface, preferred for semi-physical transfer.
-- **b. Using Mujoco C++ simulation with LCM/ROS**: Running the Mujoco simulation asynchronously, interacting with C++ and Pytorch via LCM, suited for real-world transfer.
+- **a. С использованием Mujoco Python/C++ симуляции:** Встраивая сетевой ввод-вывод в интерфейс Mujoco. Подходит для полу-реал трансфера.
 
-Before transfer, ensure the `default_dof_pos` matches the Isaac simulation:
+- **b. С использованием Mujoco С++ симуляции с LCM/ROS:**  Mujoco запускается асинхронно,  взаимодействует  с C++ и Pytorch через LCM, Лучше подходит для полноценного трансфера на бортовой Jetson.
+
+
+Перед началом переноса убедиитесь, что default_dof_pos в файле `sim2sim_tinker.py` совпадает со значенимаями из IsaacGym:
 ```python
 default_dof_pos = [0.0,-0.0,0.56,-1.12,0.57,0.0,0.0,0.56,-1.12,0.57]
 ```
-Match the model path:
+Проверьте путь модели:
 ```bash
 parser.add_argument('--load_model', type=str, default='/home/pi/Downloads/LocomotionWithNP3O-masteroldx/modelt.pt')
 ```
-Update KP and KD to match training:
+Отредактируйте значения КР и КD на полученные при обучении
 ```python
 class robot_config:
     kp_all = 9.0
@@ -153,30 +192,22 @@ class robot_config:
     kds = np.array([kd_all]*10, dtype=np.double)
     tau_limit = 12. * np.ones(10, dtype=np.double)
 ```
-Then run the transfer script:
+И запустите скрипт переноса:
 ```bash
 python sim2sim_tinker.py
 ```
 
-### Prototype Inference Test
-For prototype testing, connect the robot to the training server via Ethernet, or deploy the model on Jetson Nano for edge deployment.
+### Тест инференса прототипа
+Для тестирования прототипа, подключите робото к сереверу обучения через интернет, или запустите модельна Jetson Nano. 
 <div align="center">
 <img src="https://github.com/Yuexuan9/Tinker/raw/main/docs/images/development/5.png" height="150" />
 </div>
-First, compile the `sim2sim_lcm` build folder, ensuring that **libtorch** and **cuDNN** are installed. Then, modify the `udp_publisher_tinker.cpp` to set the robot's IP address:
-```cpp
-string UDP_IP="192.168.1.242";
-int SERV_PORT= 10000;
-```
-Modify the model path:
-```cpp
-model_path = "/home/pi/Downloads/back_good/LocomotionWithNP3O-master/model_jitt.pt";
-load_policy();
-```
-Run the publisher:
-```bash
-./udp_publisher_tinker
-```
+
+Сначала скомпилируйте  папку сборки `sim2sim_lcm`, убедитесь что **libtorch** и  **cuDNN** установлены. Затем введите IP робота в `udp_publisher_tinker.cpp`:   
+ ```cpp string UDP_IP="192.168.1.242"; int SERV_PORT= 10000; ```   
+  Отредактируйте путь к модели:  
+   ```cpp model_path = "/home/pi/Downloads/back_good/LocomotionWithNP3O-master/model_jitt.pt"; load_policy(); ```  
+и запустите паблишер: ```bash ./udp_publisher_tinker ```
 
 ### Robot Operation
 After completing Model Training, robot installation and assembly, and migrating software package compilation, you can start testing the gait. First, select an IP name in the image file txt document of the host computer and modify the address to the master IP. Then, select the corresponding name from the drop-down connection menu of the host computer.
